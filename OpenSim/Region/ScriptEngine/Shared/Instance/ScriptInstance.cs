@@ -351,7 +351,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Instance
                                                                LocalID, ItemID, ObjectID,
                                                                PluginData);
 
-                            // m_log.DebugFormat("[Script] Successfully retrieved state for script {0}.{1}", PrimName, m_ScriptName);
+                            //m_log.DebugFormat("[Script] Successfully retrieved state for script {0}.{1}", PrimName, m_ScriptName);
 
 
                             if (!Running)
@@ -409,10 +409,11 @@ namespace OpenSim.Region.ScriptEngine.Shared.Instance
             if (ShuttingDown)
                 return;
 
+            if (m_startOnInit)
+                Start();
+
             if (m_startedFromSavedState)
             {
-                if (m_startOnInit)
-                    Start();
                 if (m_postOnRez)
                 {
                     PostEvent(new EventParams("on_rez",
@@ -441,10 +442,10 @@ namespace OpenSim.Region.ScriptEngine.Shared.Instance
             }
             else
             {
-                if (m_startOnInit)
-                    Start();
-                PostEvent(new EventParams("state_entry",
-                                          new Object[0], new DetectParams[0]));
+                if(Running & ScriptTask.ScriptRunning)
+                    PostEvent(EventParams.StateEntryParams);
+                else
+                    QueueEvent(EventParams.StateEntryParams);
                 if (m_postOnRez)
                 {
                     PostEvent(new EventParams("on_rez",
@@ -677,8 +678,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Instance
                                            new DetectParams[0]));
                 PostEvent(new EventParams("state", new Object[] { state },
                                            new DetectParams[0]));
-                PostEvent(new EventParams("state_entry", new Object[0],
-                                           new DetectParams[0]));
+                PostEvent(EventParams.StateEntryParams);
 
                 // Requeue the timer event after the state changing events
                 if (lastTimerEv != null) EventQueue.Enqueue(lastTimerEv);
@@ -689,6 +689,58 @@ namespace OpenSim.Region.ScriptEngine.Shared.Instance
             }
 
             throw new EventAbortException();
+        }
+
+        public void QueueEvent(EventParams data)
+        {
+            lock (EventQueue)
+            {
+                // The only events that persist across state changes are timers
+                if (m_StateChangeInProgress && data.EventName != "timer")
+                    return;
+                if (EventQueue.Count >= m_MaxScriptQueue)
+                    return;
+                if (data.EventName == "timer")
+                {
+                    if (m_TimerQueued)
+                        return;
+                    m_TimerQueued = true;
+                }
+                if (data.EventName == "control")
+                {
+                    int held = ((LSL_Types.LSLInteger)data.Params[1]).value;
+                    // int changed = ((LSL_Types.LSLInteger)data.Params[2]).value;
+
+                    // If the last message was a 0 (nothing held)
+                    // and this one is also nothing held, drop it
+                    //
+                    if (m_LastControlLevel == held && held == 0)
+                        return;
+
+                    // If there is one or more queued, then queue
+                    // only changed ones, else queue unconditionally
+                    //
+                    if (m_ControlEventsInQueue > 0)
+                    {
+                        if (m_LastControlLevel == held)
+                            return;
+                    }
+
+                    m_LastControlLevel = held;
+                    m_ControlEventsInQueue++;
+                }
+
+                if (data.EventName == "collision")
+                {
+                    if (m_CollisionInQueue)
+                        return;
+                    if (data.DetectParams == null)
+                        return;
+
+                    m_CollisionInQueue = true;
+                }
+                EventQueue.Enqueue(data);
+            }
         }
 
         /// <summary>
@@ -1089,13 +1141,14 @@ namespace OpenSim.Region.ScriptEngine.Shared.Instance
             part.CollisionSound = UUID.Zero;
             part.RemoveScriptTargets(ItemID);
             part.SetScriptEvents(ItemID, m_Script.GetStateEventFlags(State));
-            if (running)
+            if (running & ScriptTask.ScriptRunning)
+            {
                 Start();
-
+                PostEvent(EventParams.StateEntryParams);
+            }
+            else
+                QueueEvent(EventParams.StateEntryParams);
             m_SaveState = StatePersistedHere;
-
-            PostEvent(new EventParams("state_entry",
-                    new Object[0], new DetectParams[0]));
         }
 
         [DebuggerNonUserCode] //Stops the VS debugger from farting in this function
@@ -1126,8 +1179,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Instance
             if (m_CurrentEvent != "state_entry" || oldState != "default")
             {
                 m_SaveState = StatePersistedHere;
-                PostEvent(new EventParams("state_entry",
-                        new Object[0], new DetectParams[0]));
+                PostEvent(EventParams.StateEntryParams);
                 throw new EventAbortException();
             }
         }

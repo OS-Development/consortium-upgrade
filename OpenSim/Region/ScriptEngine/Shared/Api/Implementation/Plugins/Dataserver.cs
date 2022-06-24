@@ -212,8 +212,10 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Plugins
 
             m_CmdManager.m_ScriptEngine.PostObjectEvent(ds.localID,
                     new EventParams("dataserver", new Object[]
-                            { new LSL_Types.LSLString(ds.ID.ToString()),
-                            new LSL_Types.LSLString(reply)},
+                    {
+                        new LSL_Types.LSLString(ds.ID.ToString()),
+                        new LSL_Types.LSLString(reply)
+                    },
                     new DetectParams[0]));
         }
 
@@ -224,7 +226,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api.Plugins
                 List<string> toremove = new List<string>(DataserverRequests.Count);
                 foreach (DataserverRequest ds in DataserverRequests.Values)
                 {
-                    if (ds.itemID == itemID)
+                    if (ds.itemID.Equals(itemID))
                         toremove.Add(ds.handle);
                 }
                 foreach (string s in toremove)

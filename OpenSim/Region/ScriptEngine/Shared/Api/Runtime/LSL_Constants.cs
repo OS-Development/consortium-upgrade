@@ -35,7 +35,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
     public partial class ScriptBaseClass
     {
         // SCRIPTS CONSTANTS
-        public static readonly LSLInteger OS_APIVERSION = 19;
+        public static readonly LSLInteger OS_APIVERSION = 20;
 
         public static readonly LSLInteger TRUE = 1;
         public static readonly LSLInteger FALSE = 0;
@@ -456,6 +456,7 @@ namespace OpenSim.Region.ScriptEngine.Shared.ScriptBase
         public const int PRIM_ALLOW_UNSIT = 39;
         public const int PRIM_SCRIPTED_SIT_ONLY = 40;
         public const int PRIM_SIT_TARGET = 41;
+        public const int PRIM_PROJECTOR = 42;
 
 
         // parameters

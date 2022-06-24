@@ -2205,7 +2205,13 @@ namespace OpenSim.Region.ScriptEngine.Shared.Api
         /// </remarks>
         /// <param name="notecardName">The name of the notecard to write.</param>
         /// <param name="contents">The contents of the notecard.</param>
-        public void osMakeNotecard(string notecardName, LSL_Types.list contents)
+        public void osMakeNotecard(string notecardName, LSL_String contents)
+        {
+            CheckThreatLevel(ThreatLevel.High, "osMakeNotecard");
+            SaveNotecard(notecardName, "Script generated notecard", contents + "\n", false);
+        }
+
+        public void osMakeNotecard(string notecardName, LSL_List contents)
         {
             CheckThreatLevel(ThreatLevel.High, "osMakeNotecard");
 
